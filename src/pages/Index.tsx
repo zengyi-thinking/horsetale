@@ -1,36 +1,70 @@
 import WelcomeScreen from "@/components/WelcomeScreen";
+import RouteSelect from "@/components/RouteSelect";
 import StoryCard from "@/components/StoryCard";
 import BlessingScreen from "@/components/BlessingScreen";
 import { useStoryState } from "@/hooks/useStoryState";
-import { storyStages } from "@/data/storyData";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { StoryChoice, StoryRoute } from "@/data/storyData";
+import { useCallback } from "react";
 
 const Index = () => {
-  const { currentStage, selectedTags, isTransitioning, selectChoice, start, restart } = useStoryState();
+  const {
+    phase, currentStage, currentStageIndex, totalStages,
+    selectedTags, isTransitioning,
+    start, selectRoute, selectChoice, restart,
+  } = useStoryState();
+  const sfx = useSoundEffects();
 
-  // Welcome screen
-  if (currentStage === -1) {
+  const handleStart = useCallback(() => {
+    sfx.playStart();
+    start();
+  }, [sfx, start]);
+
+  const handleSelectRoute = useCallback((route: StoryRoute) => {
+    sfx.playTransition();
+    selectRoute(route);
+  }, [sfx, selectRoute]);
+
+  const handleSelectChoice = useCallback((choice: StoryChoice) => {
+    sfx.playSelect();
+    selectChoice(choice);
+  }, [sfx, selectChoice]);
+
+  const handleRestart = useCallback(() => {
+    sfx.playTransition();
+    restart();
+  }, [sfx, restart]);
+
+  if (phase === "welcome") {
     return (
       <div className={`transition-opacity duration-500 ${isTransitioning ? "opacity-0" : "opacity-100"}`}>
-        <WelcomeScreen onStart={start} />
+        <WelcomeScreen onStart={handleStart} />
       </div>
     );
   }
 
-  // Blessing screen (after all stages)
-  if (currentStage >= storyStages.length) {
-    return <BlessingScreen tags={selectedTags} onRestart={restart} />;
+  if (phase === "route-select") {
+    return <RouteSelect onSelect={handleSelectRoute} isTransitioning={isTransitioning} />;
   }
 
-  // Story stage
-  return (
-    <StoryCard
-      stage={storyStages[currentStage]}
-      onSelect={selectChoice}
-      isTransitioning={isTransitioning}
-      stageIndex={currentStage}
-      totalStages={storyStages.length}
-    />
-  );
+  if (phase === "blessing") {
+    return <BlessingScreen tags={selectedTags} onRestart={handleRestart} onFanfare={sfx.playFanfare} />;
+  }
+
+  if (currentStage) {
+    return (
+      <StoryCard
+        stage={currentStage}
+        onSelect={handleSelectChoice}
+        isTransitioning={isTransitioning}
+        stageIndex={currentStageIndex}
+        totalStages={totalStages}
+        collectedTags={selectedTags}
+      />
+    );
+  }
+
+  return null;
 };
 
 export default Index;

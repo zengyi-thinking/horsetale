@@ -1,25 +1,31 @@
+import { useEffect } from "react";
 import { generateBlessing } from "@/data/storyData";
 
 interface Props {
   tags: string[];
   onRestart: () => void;
+  onFanfare?: () => void;
 }
 
-const BlessingScreen = ({ tags, onRestart }: Props) => {
+const BlessingScreen = ({ tags, onRestart, onFanfare }: Props) => {
   const blessing = generateBlessing(tags);
   const lines = blessing.split("\n");
+
+  useEffect(() => {
+    onFanfare?.();
+  }, [onFanfare]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden">
       {/* Background sparkles */}
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
           className="absolute text-xl sparkle"
           style={{
-            top: `${15 + Math.random() * 70}%`,
-            left: `${10 + Math.random() * 80}%`,
-            animationDelay: `${i * 0.3}s`,
+            top: `${10 + Math.random() * 80}%`,
+            left: `${5 + Math.random() * 90}%`,
+            animationDelay: `${i * 0.25}s`,
           }}
         >
           ✨
@@ -37,9 +43,9 @@ const BlessingScreen = ({ tags, onRestart }: Props) => {
 
           {/* Tags collected */}
           <div className="flex flex-wrap justify-center gap-2 mb-6">
-            {tags.map((tag) => (
+            {tags.map((tag, i) => (
               <span
-                key={tag}
+                key={i}
                 className="px-3 py-1 rounded-full text-xs bg-secondary text-secondary-foreground border border-primary/20"
               >
                 {tag}

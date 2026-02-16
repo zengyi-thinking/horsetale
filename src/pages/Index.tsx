@@ -1,13 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import WelcomeScreen from "@/components/WelcomeScreen";
+import StoryCard from "@/components/StoryCard";
+import BlessingScreen from "@/components/BlessingScreen";
+import { useStoryState } from "@/hooks/useStoryState";
+import { storyStages } from "@/data/storyData";
 
 const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+  const { currentStage, selectedTags, isTransitioning, selectChoice, start, restart } = useStoryState();
+
+  // Welcome screen
+  if (currentStage === -1) {
+    return (
+      <div className={`transition-opacity duration-500 ${isTransitioning ? "opacity-0" : "opacity-100"}`}>
+        <WelcomeScreen onStart={start} />
       </div>
-    </div>
+    );
+  }
+
+  // Blessing screen (after all stages)
+  if (currentStage >= storyStages.length) {
+    return <BlessingScreen tags={selectedTags} onRestart={restart} />;
+  }
+
+  // Story stage
+  return (
+    <StoryCard
+      stage={storyStages[currentStage]}
+      onSelect={selectChoice}
+      isTransitioning={isTransitioning}
+      stageIndex={currentStage}
+      totalStages={storyStages.length}
+    />
   );
 };
 

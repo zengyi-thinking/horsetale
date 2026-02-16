@@ -8,51 +8,125 @@ interface MusicState {
   theme: MusicTheme;
 }
 
-// 音乐生成器 - 使用 Web Audio API 创建程序化音乐
-class MusicGenerator {
+// 增强版音乐生成器 - 包含和弦、旋律、贝斯
+class EnhancedMusicGenerator {
   private audioCtx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
-  private oscillators: OscillatorNode[] = [];
-  private intervalId: number | null = null;
+  private isPlaying = false;
   private currentTheme: MusicTheme = "none";
-  private volume: number = 0.3;
+  private volume: number = 0.25;
+  private intervals: number[] = [];
 
-  // 不同主题的音阶和节奏
-  private themes: Record<MusicTheme, { notes: number[]; interval: number; type: OscillatorType }> = {
+  // 各主题的音乐配置
+  private themes: Record<MusicTheme, {
+    tempo: number; // BPM
+    rootNote: number; // 根音频率
+    scale: number[]; // 音阶
+    melody: number[]; // 主旋律
+    chordProgression: number[][]; // 和弦进行
+    bassLine: number[]; // 贝斯线
+    instrument: OscillatorType;
+    description: string;
+  }> = {
     welcome: {
-      notes: [261.63, 293.66, 329.63, 349.23, 392.00, 329.63, 293.66, 261.63], // C大调琶音，神秘空灵
-      interval: 800,
-      type: "sine",
+      tempo: 60,
+      rootNote: 261.63, // C4
+      scale: [0, 2, 4, 7, 9], // 大调五声音阶
+      melody: [0, 4, 7, 9, 11, 9, 7, 4],
+      chordProgression: [
+        [0, 4, 7], // C
+        [0, 4, 7], // C
+        [5, 9, 12], // F
+        [7, 11, 14], // G
+      ],
+      bassLine: [0, 0, 5, 5, 7, 7, 4, 4],
+      instrument: "sine",
+      description: "神秘空灵",
     },
     "route-select": {
-      notes: [392.00, 440.00, 493.88, 523.25, 587.33, 523.25], // G大调上行，轻柔希望
-      interval: 600,
-      type: "sine",
+      tempo: 72,
+      rootNote: 293.66, // D4
+      scale: [0, 2, 4, 7, 9], // 大调五声音阶
+      melody: [0, 2, 4, 5, 7, 9, 7, 5, 4, 2, 0],
+      chordProgression: [
+        [0, 4, 7], // D
+        [5, 9, 12], // G
+        [0, 4, 7], // D
+        [7, 11, 14], // A
+      ],
+      bassLine: [0, 2, 5, 7, 9, 7, 5, 2],
+      instrument: "sine",
+      description: "轻柔希望",
     },
     career: {
-      notes: [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 523.25], // C大调上行，大气激昂
-      interval: 400,
-      type: "triangle",
+      tempo: 90,
+      rootNote: 261.63, // C4
+      scale: [0, 2, 4, 5, 7, 9, 11], // 大调音阶
+      melody: [0, 4, 7, 12, 14, 12, 11, 9, 7, 5, 4, 2, 0],
+      chordProgression: [
+        [0, 4, 7], // C
+        [5, 9, 12], // F
+        [7, 11, 14], // G
+        [0, 4, 7], // C
+      ],
+      bassLine: [0, 0, 5, 5, 7, 7, 4, 4, 0, 0, 5, 5, 7, 7, 4, 4],
+      instrument: "triangle",
+      description: "大气激昂",
     },
     love: {
-      notes: [293.66, 349.23, 392.00, 440.00, 392.00, 349.23, 293.66], // D大调，浪漫抒情
-      interval: 700,
-      type: "sine",
+      tempo: 66,
+      rootNote: 293.66, // D4
+      scale: [0, 2, 4, 7, 9], // 大调五声音阶，浪漫
+      melody: [0, 2, 4, 7, 9, 11, 9, 7, 4, 2, 0, 2, 4, 2, 0],
+      chordProgression: [
+        [0, 4, 7], // D
+        [3, 7, 10], // Em
+        [5, 9, 12], // G
+        [7, 11, 14], // A
+      ],
+      bassLine: [0, 0, 2, 2, 5, 5, 7, 7, 9, 9, 7, 7, 5, 5, 2, 2],
+      instrument: "sine",
+      description: "浪漫抒情",
     },
     self: {
-      notes: [261.63, 293.66, 329.63, 293.66, 261.63, 246.94, 293.66], // C小调，宁静治愈
-      interval: 900,
-      type: "sine",
+      tempo: 54,
+      rootNote: 246.94, // B3
+      scale: [0, 2, 3, 5, 7, 10], // 小调六声音阶，宁静
+      melody: [0, 3, 5, 7, 5, 3, 0, -2, 0, 3, 5, 7, 5, 3, 0],
+      chordProgression: [
+        [0, 3, 7], // Bm
+        [5, 9, 12], // G
+        [0, 3, 7], // Bm
+        [2, 5, 9], // D
+      ],
+      bassLine: [-1, -1, 5, 5, 7, 7, 2, 2, -1, -1, 5, 5, 7, 7, 2, 2],
+      instrument: "sine",
+      description: "宁静治愈",
     },
     blessing: {
-      notes: [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25], // C大调高音，喜庆热闹
-      interval: 250,
-      type: "triangle",
+      tempo: 120,
+      rootNote: 329.63, // E4
+      scale: [0, 2, 4, 5, 7, 9, 11], // 大调音阶，喜庆
+      melody: [0, 4, 7, 12, 14, 16, 19, 16, 14, 12, 11, 9, 7, 5, 4, 2, 0],
+      chordProgression: [
+        [0, 4, 7], // E
+        [0, 4, 7], // E
+        [5, 9, 12], // A
+        [7, 11, 14], // B
+      ],
+      bassLine: [0, 2, 4, 5, 7, 9, 11, 12, 11, 9, 7, 5, 4, 2, 0, -1],
+      instrument: "triangle",
+      description: "喜庆热闹",
     },
     none: {
-      notes: [],
-      interval: 0,
-      type: "sine",
+      tempo: 60,
+      rootNote: 261.63,
+      scale: [],
+      melody: [],
+      chordProgression: [],
+      bassLine: [],
+      instrument: "sine",
+      description: "",
     },
   };
 
@@ -60,8 +134,8 @@ class MusicGenerator {
     if (!this.audioCtx) {
       this.audioCtx = new AudioContext();
       this.masterGain = this.audioCtx.createGain();
-      this.masterGain.connect(this.audioCtx.destination);
       this.masterGain.gain.value = this.volume;
+      this.masterGain.connect(this.audioCtx.destination);
     }
     return this.audioCtx;
   }
@@ -73,97 +147,142 @@ class MusicGenerator {
     }
   }
 
+  // 播放一个音符
+  private playNote(frequency: number, duration: number, type: OscillatorType, gainValue: number, detune = 0) {
+    const ctx = this.audioCtx;
+    if (!ctx || !this.masterGain) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.value = frequency;
+    osc.detune.value = detune;
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(gainValue, now + 0.05);
+    gain.gain.setValueAtTime(gainValue, now + duration - 0.1);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+
+  // 播放和弦
+  private playChord(notes: number[], duration: number, type: OscillatorType) {
+    notes.forEach((note, i) => {
+      this.playNote(note, duration, type, 0.08, i * 3); // 轻微 detune 制造合唱效果
+    });
+  }
+
+  // 播放旋律
+  private playMelodyLine(theme: typeof this.themes["welcome"], beatDuration: number) {
+    theme.melody.forEach((noteIndex, i) => {
+      if (noteIndex < 0) return;
+      const freq = theme.rootNote * Math.pow(2, noteIndex / 12);
+      this.playNote(freq, beatDuration * 0.8, theme.instrument, 0.15);
+    });
+  }
+
+  // 播放贝斯线
+  private playBassLine(theme: typeof this.themes["welcome"], beatDuration: number) {
+    theme.bassLine.forEach((noteIndex, i) => {
+      const freq = (theme.rootNote / 4) * Math.pow(2, noteIndex / 12);
+      this.playNote(freq, beatDuration * 1.5, "sine", 0.2);
+    });
+  }
+
+  // 播放环境音（持续的 pads）
+  private playPad(theme: typeof this.themes["welcome"], duration: number) {
+    const ctx = this.audioCtx;
+    if (!ctx || !this.masterGain) return;
+
+    // 创建两个错开的 pad 音符制造环绕感
+    [0, 7].forEach((offset, i) => {
+      const freq = theme.rootNote * Math.pow(2, offset / 12);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.06, now + 2);
+      gain.gain.setValueAtTime(0.06, now + duration - 2);
+      gain.gain.linearRampToValueAtTime(0, now + duration);
+
+      osc.start(now);
+      osc.stop(now + duration);
+    });
+  }
+
   play(theme: MusicTheme) {
     if (theme === "none") {
       this.stop();
       return;
     }
 
-    // 如果是同一主题，不重新播放
-    if (this.currentTheme === theme && this.oscillators.length > 0) {
+    if (this.currentTheme === theme && this.isPlaying) {
       return;
     }
 
     this.stop();
     this.currentTheme = theme;
+    this.isPlaying = true;
 
     const ctx = this.init();
-    if (!ctx || !this.masterGain) return;
+    if (!ctx) return;
 
-    const themeData = this.themes[theme];
-    if (!themeData.notes.length) return;
+    const config = this.themes[theme];
+    const beatDuration = 60 / config.tempo; // 每拍的时长（秒）
+    const barDuration = beatDuration * 4; // 一小节的时长
 
-    let noteIndex = 0;
+    // 立即开始播放
+    this.playPad(config, barDuration * 4);
+    this.playBassLine(config, beatDuration);
+    this.playMelodyLine(config, beatDuration);
 
-    // 创建持续的环境音效
-    const playNote = () => {
-      if (!ctx || !this.masterGain) return;
+    // 设置循环
+    const melodyInterval = window.setInterval(() => {
+      if (!this.isPlaying) return;
+      this.playMelodyLine(config, beatDuration);
+    }, barDuration * 1000);
 
-      const note = themeData.notes[noteIndex % themeData.notes.length];
+    const bassInterval = window.setInterval(() => {
+      if (!this.isPlaying) return;
+      this.playBassLine(config, beatDuration);
+    }, barDuration * 1000);
 
-      // 主音
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    const padInterval = window.setInterval(() => {
+      if (!this.isPlaying) return;
+      this.playPad(config, barDuration * 4);
+    }, barDuration * 4000);
 
-      // 添加轻微的泛音
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
+    // 和弦每两拍变化一次
+    const chordInterval = window.setInterval(() => {
+      if (!this.isPlaying) return;
+      const chordIndex = Math.floor((Date.now() / (beatDuration * 2000)) % config.chordProgression.length);
+      const chordNotes = config.chordProgression[chordIndex].map(
+        note => config.rootNote * Math.pow(2, note / 12)
+      );
+      this.playChord(chordNotes, beatDuration * 2, config.instrument);
+    }, beatDuration * 2000);
 
-      osc.connect(gain);
-      gain.connect(this.masterGain!);
-
-      osc2.connect(gain2);
-      gain2.connect(this.masterGain!);
-
-      osc.type = themeData.type;
-      osc2.type = "sine";
-
-      osc.frequency.value = note;
-      osc2.frequency.value = note * 2; // 泛音高八度
-
-      // 淡入淡出效果
-      const now = ctx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.15, now + 0.1);
-      gain.gain.linearRampToValueAtTime(0.1, now + themeData.interval / 1000 * 0.8);
-      gain.gain.linearRampToValueAtTime(0, now + themeData.interval / 1000);
-
-      gain2.gain.setValueAtTime(0, now);
-      gain2.gain.linearRampToValueAtTime(0.05, now + 0.1);
-      gain2.gain.linearRampToValueAtTime(0.02, now + themeData.interval / 1000 * 0.8);
-      gain2.gain.linearRampToValueAtTime(0, now + themeData.interval / 1000);
-
-      osc.start(now);
-      osc.stop(now + themeData.interval / 1000);
-      osc2.start(now);
-      osc2.stop(now + themeData.interval / 1000);
-
-      this.oscillators.push(osc, osc2);
-
-      noteIndex++;
-    };
-
-    // 立即播放第一个音符，然后设置间隔
-    playNote();
-    this.intervalId = window.setInterval(playNote, themeData.interval);
+    this.intervals = [melodyInterval, bassInterval, padInterval, chordInterval];
   }
 
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-
-    // 渐出现有音符
-    this.oscillators.forEach((osc) => {
-      try {
-        osc.stop();
-      } catch {
-        // 忽略已停止的振荡器
-      }
-    });
-
-    this.oscillators = [];
+    this.isPlaying = false;
+    this.intervals.forEach(id => clearInterval(id));
+    this.intervals = [];
     this.currentTheme = "none";
   }
 
@@ -174,17 +293,16 @@ class MusicGenerator {
   }
 }
 
-// 创建单例
-const musicGenerator = new MusicGenerator();
+// 单例
+const musicGenerator = new EnhancedMusicGenerator();
 
 export function useBackgroundMusic() {
   const [state, setState] = useState<MusicState>({
     isPlaying: false,
-    volume: 0.3,
+    volume: 0.25,
     theme: "none",
   });
 
-  // 初始化音频上下文（需要用户交互）
   useEffect(() => {
     const initAudio = () => {
       musicGenerator.resume();

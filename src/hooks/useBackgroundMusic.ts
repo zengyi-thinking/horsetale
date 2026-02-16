@@ -157,16 +157,10 @@ class MusicGenerator {
     // 渐出现有音符
     this.oscillators.forEach((osc) => {
       try {
-        const now = this.audioCtx?.currentTime || 0;
-        const gain = this.audioCtx?.createGain();
-        if (gain) {
-          osc.disconnect();
-          osc.connect(gain);
-          gain.gain.setValueAtTime(gain.gain.value || 0.1, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-          osc.stop(now + 0.5);
-        }
-      } catch {}
+        osc.stop();
+      } catch {
+        // 忽略已停止的振荡器
+      }
     });
 
     this.oscillators = [];
